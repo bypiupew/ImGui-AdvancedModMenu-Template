@@ -1,0 +1,20 @@
+name: Build Mod Menu
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Theos Environment
+        run: |
+          bash -c "$(curl -fsSL https://githubusercontent.com)"
+          echo "THEOS=~/theos" >> $GITHUB_ENV
+
+      - name: Compile dylib Binary
+        run: |
+          cd ImGui-AdvancedModMenu/ImGui-ModMenu
+          make package FINALPACKAGE=1
