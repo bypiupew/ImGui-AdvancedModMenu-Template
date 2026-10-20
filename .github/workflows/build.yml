@@ -9,22 +9,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Pure Core Compiler
+      - name: Install Compiler Environment
         run: |
-          # 1. Pull down the official compilation logic rules
           git clone --recursive https://github.com ~/theos
-          
-          # 2. Add standard patch paths
           mkdir -p ~/theos/sdks
           curl -LO https://github.com
           unzip -q master.zip
           mv sdks-master/* ~/theos/sdks/
           rm -rf master.zip sdks-master
-          
-          # 3. Save memory variables
           echo "THEOS=~/theos" >> $GITHUB_ENV
 
-      - name: Compile dylib Binary
+      - name: Compile Tweak Binary
         run: |
           export THEOS=~/theos
           cd ImGui-AdvancedModMenu/ImGui-ModMenu
