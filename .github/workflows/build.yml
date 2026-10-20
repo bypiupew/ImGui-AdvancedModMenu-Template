@@ -1,33 +1,20 @@
-name: Build Mod Menu
+name: Build iOS Mod Menu
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Theos and iOS Toolchain
-        run: |
-          # 1. Install the core Theos framework setup
-          bash -c "$(curl -fsSL https://githubusercontent.com)"
-          
-          # 2. Download the essential iOS patches and SDK structures
-          mkdir -p ~/theos/sdks
-          curl -LO https://github.com
-          unzip -q master.zip
-          mv sdks-master/* ~/theos/sdks/
-          rm -rf master.zip sdks-master
-          
-          # 3. Save the active system paths for the environment loop
-          echo "THEOS=~/theos" >> $GITHUB_ENV
+      - name: Setup Theos iOS Environment
+        uses: youngdynasty/theos-action@v1
+        with:
+          theos-ref: master
 
       - name: Compile dylib Binary
         run: |
-          export THEOS=~/theos
           cd ImGui-AdvancedModMenu/ImGui-ModMenu
-          
-          # Run the compilation engine directly from the full path utility
-          $THEOS/bin/make package FINALPACKAGE=1
+          make package FINALPACKAGE=1
