@@ -159,7 +159,16 @@ void Menu::renderSubTab0() {
 
 		ImGui::BeginChild(obf("aimassist").c_str(), ImVec2(ImGuiHelper::getWidth(), 300), true);
 
-		// your code here
+		// 1. Link dynamically to our global variable flags inside Set.mm
+extern bool NoSpreadActive;
+extern bool GodModeActive;
+
+// 2. Draw our interactive visual buttons inside the menu box container
+ImGui::Text("Weapon Modifications");
+ImGui::Separator();
+ImGui::Checkbox("Perfect Accuracy (No Spread)", &NoSpreadActive);
+ImGui::Checkbox("God Mode (Invincibility)", &GodModeActive);
+
 
 		ImGui::EndChild();
 
