@@ -11,12 +11,12 @@ jobs:
 
       - name: Install Compiler Environment
         run: |
-          git clone --recursive https://github.com ~/theos
+          git clone --recursive https://github.com/theos/theos.git ~/theos
           mkdir -p ~/theos/sdks
           curl -LO https://github.com
-          unzip -q master.zip
-          mv sdks-master/* ~/theos/sdks/
-          rm -rf master.zip sdks-master
+          unzip -q main.zip
+          mv sdks-main/* ~/theos/sdks/
+          rm -rf main.zip sdks-main
           echo "THEOS=~/theos" >> $GITHUB_ENV
 
       - name: Compile Tweak Binary
