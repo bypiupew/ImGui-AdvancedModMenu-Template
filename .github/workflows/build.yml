@@ -4,17 +4,28 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Theos iOS Environment
-        uses: youngdynasty/theos-action@v1
-        with:
-          theos-ref: master
+      - name: Install Pure Core Compiler
+        run: |
+          # 1. Pull down the official compilation logic rules
+          git clone --recursive https://github.com ~/theos
+          
+          # 2. Add standard patch paths
+          mkdir -p ~/theos/sdks
+          curl -LO https://github.com
+          unzip -q master.zip
+          mv sdks-master/* ~/theos/sdks/
+          rm -rf master.zip sdks-master
+          
+          # 3. Save memory variables
+          echo "THEOS=~/theos" >> $GITHUB_ENV
 
       - name: Compile dylib Binary
         run: |
+          export THEOS=~/theos
           cd ImGui-AdvancedModMenu/ImGui-ModMenu
-          make package FINALPACKAGE=1
+          $THEOS/bin/make package FINALPACKAGE=1
