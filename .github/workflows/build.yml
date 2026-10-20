@@ -9,12 +9,25 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Theos Environment
+      - name: Install Theos and iOS Toolchain
         run: |
+          # 1. Install the core Theos framework setup
           bash -c "$(curl -fsSL https://githubusercontent.com)"
+          
+          # 2. Download the essential iOS patches and SDK structures
+          mkdir -p ~/theos/sdks
+          curl -LO https://github.com
+          unzip -q master.zip
+          mv sdks-master/* ~/theos/sdks/
+          rm -rf master.zip sdks-master
+          
+          # 3. Save the active system paths for the environment loop
           echo "THEOS=~/theos" >> $GITHUB_ENV
 
       - name: Compile dylib Binary
         run: |
+          export THEOS=~/theos
           cd ImGui-AdvancedModMenu/ImGui-ModMenu
-          make package FINALPACKAGE=1
+          
+          # Run the compilation engine directly from the full path utility
+          $THEOS/bin/make package FINALPACKAGE=1
