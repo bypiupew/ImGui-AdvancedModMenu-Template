@@ -123,4 +123,30 @@ bool  Set::isDSlider() {
 }
 bool  Set::isVec4() {
 	return typeID == SET_TYPE_VEC4;
+}#include <substrate.h>
+#include <mach-o/dyld.h>
+
+// 1. Linking our Menu Switches to global variables
+bool NoSpreadActive = false;
+bool GodModeActive = false;
+
+// 2. Define our Ghidra function hook signature
+void (*orig_WeaponSpreadCalc)(float p1, float p2, long p3);
+void hooked_WeaponSpreadCalc(float param_1, float param_2, long param_3) {
+    // If the checkbox in our menu is turned ON, force calculation to zero spread
+    if (NoSpreadActive) {
+        param_1 = 0.0f;
+        param_2 = 0.0f;
+    }
+    orig_WeaponSpreadCalc(param_1, param_2, param_3);
+}
+
+// 3. This automatically maps the hook the exact millisecond the game opens
+__attribute__((constructor)) static void run_mod_menu_offsets() {
+    uint64_t dynamic_base_address = (uint64_t)_dyld_get_image_header(0);
+    uint64_t weapon_offset = 0x9445d0; // Your exact Ghidra calculation!
+    
+    MSHookFunction((void*)(dynamic_base_address + weapon_offset), 
+                   (void*)&hooked_WeaponSpreadCalc, 
+                   (void**)&orig_WeaponSpreadCalc);
 }
