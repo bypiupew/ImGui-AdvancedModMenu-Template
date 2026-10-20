@@ -16,5 +16,5 @@ jobs:
 
       - name: Compile dylib Binary
         run: |
-          cd ImGui-AdvancedModMenu/ImGui-ModMenu
+          cd ImGui-ModMenu
           make package FINALPACKAGE=1
