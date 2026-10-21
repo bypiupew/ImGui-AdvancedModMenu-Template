@@ -12,24 +12,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Inspect Project
         run: |
-          brew install ldid
-          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-
-      - name: Install iOS SDK
-        run: |
-          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
-          mkdir -p "$HOME/theos/sdks"
-          cp -R "$RUNNER_TEMP/sdks/iPhoneOS14.5.sdk" "$HOME/theos/sdks/"
-
-      - name: Check Project Directory
-        run: |
+          echo "=== Repository root ==="
           ls -la
-          ls -la ImGui-AdvancedModMenu/ImGui-ModMenu
 
-      - name: Compile Tweak
-        run: |
-          cd ImGui-AdvancedModMenu/ImGui-ModMenu
-          make clean package FINALPACKAGE=1
+          echo "=== Project directory ==="
+          find ImGui-Advanced-ModMenu -maxdepth 3 -type f
+
+          echo "=== Find Makefiles ==="
+          find . -name Makefile -not -path './.git/*'
+
+          echo "=== Xcode version ==="
+          xcodebuild -version
+
+          echo "=== Xcode project schemes ==="
+          xcodebuild -list -project \
+            "ImGui-Advanced-ModMenu.xcodeproj"
