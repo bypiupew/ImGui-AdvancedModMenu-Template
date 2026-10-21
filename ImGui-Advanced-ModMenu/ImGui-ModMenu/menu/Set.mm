@@ -1,3 +1,4 @@
+
 #include "Set.hpp"
 
 Set::Set(bool val, std::string ID, std::string ID2) {
