@@ -9,7 +9,7 @@
 
 namespace Menu {
 
-    // Feature toggle variables
+    // No Spread and God Mode menu toggle states
     extern bool NoSpreadActive;
     extern bool GodModeActive;
 
@@ -36,68 +36,58 @@ namespace Menu {
 
     inline ImVec4* notSelectedTextColor =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(140, 140, 140, 255),
-                    obf("notSelectedTextColor"))
+            new Set(ImGuiHelper::rgbaToVec4(140, 140, 140, 255), obf("notSelectedTextColor"))
         ).getVec4();
 
     inline ImVec4* textCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(255, 255, 255, 255),
-                    obf("textCol"))
+            new Set(ImGuiHelper::rgbaToVec4(255, 255, 255, 255), obf("textCol"))
         ).getVec4();
 
     inline ImVec4* btnActiveCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(239, 73, 88, 255),
-                    obf("btnActiveCol"))
+            new Set(ImGuiHelper::rgbaToVec4(239, 73, 88, 255), obf("btnActiveCol"))
         ).getVec4();
 
     inline ImVec4* btnHoverCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(173, 55, 65, 255),
-                    obf("btnHoverCol"))
+            new Set(ImGuiHelper::rgbaToVec4(173, 55, 65, 255), obf("btnHoverCol"))
         ).getVec4();
 
     inline ImVec4* frameCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(44, 43, 44, 255),
-                    obf("frameCol"))
+            new Set(ImGuiHelper::rgbaToVec4(44, 43, 44, 255), obf("frameCol"))
         ).getVec4();
 
     inline ImVec4* hoverCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(37, 36, 37, 255),
-                    obf("hoverCol"))
+            new Set(ImGuiHelper::rgbaToVec4(37, 36, 37, 255), obf("hoverCol"))
         ).getVec4();
 
     inline ImVec4* itemCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(240, 74, 88, 255),
-                    obf("itemCol"))
+            new Set(ImGuiHelper::rgbaToVec4(240, 74, 88, 255), obf("itemCol"))
         ).getVec4();
 
     inline ImVec4* itemActiveCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(240, 50, 66, 255),
-                    obf("itemActiveCol"))
+            new Set(ImGuiHelper::rgbaToVec4(240, 50, 66, 255), obf("itemActiveCol"))
         ).getVec4();
 
     inline ImVec4* resizeGripCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(220, 50, 66, 120),
-                    obf("resizeGripCol"))
+            new Set(ImGuiHelper::rgbaToVec4(220, 50, 66, 120), obf("resizeGripCol"))
         ).getVec4();
 
     inline ImVec4* resizeGripHoverCol =
         &SetManager::i().add(
-            new Set(ImGuiHelper::rgbaToVec4(250, 50, 66, 140),
-                    obf("resizeGripHoverCol"))
+            new Set(ImGuiHelper::rgbaToVec4(250, 50, 66, 140), obf("resizeGripHoverCol"))
         ).getVec4();
 
+    // Menu state
     inline bool isGUIVisible = true;
 
     inline ImGuiStyle* style = nullptr;
-    inline ImFont* bigFont = nullptr;
 
     inline int selectedTab = 0;
     inline int selectedSubTab0 = 0;
@@ -105,6 +95,9 @@ namespace Menu {
     inline int selectedSubTab2 = 0;
     inline int elementSize = 120;
 
+    inline ImFont* bigFont = nullptr;
+
+    // Menu functions
     void setColors();
 
     void loadFont();
