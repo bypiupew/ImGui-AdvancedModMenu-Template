@@ -25,7 +25,7 @@ jobs:
 
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
 
-      - name: Download SDK Repository
+      - name: Download iOS SDK
         shell: bash
         run: |
           set -euo pipefail
@@ -34,17 +34,11 @@ jobs:
             https://github.com/theos/sdks.git \
             "$RUNNER_TEMP/sdks"
 
-      - name: Install iOS SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-
           SDK_SOURCE="$RUNNER_TEMP/sdks"
           SDK_NAME="iPhoneOS16.5.sdk"
 
           if [ ! -d "$SDK_SOURCE/$SDK_NAME" ]; then
-            echo "SDK not found: $SDK_NAME"
-            echo "Available SDKs:"
+            echo "ERROR: $SDK_NAME was not found."
             find "$SDK_SOURCE" -maxdepth 1 \
               -type d -name 'iPhoneOS*.sdk'
             exit 1
@@ -52,23 +46,55 @@ jobs:
 
           mkdir -p "$THEOS/sdks"
 
-          cp -R "$SDK_SOURCE/$SDK_NAME" \
-            "$THEOS/sdks/"
+          cp -R "$SDK_SOURCE/$SDK_NAME" "$THEOS/sdks/"
 
-          echo "Installed SDK: $SDK_NAME"
+          echo "SDK installed:"
+          ls -ld "$THEOS/sdks/$SDK_NAME"
+
+      - name: Check Project and Source Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
+
+          if [ ! -f "$PROJECT_DIR/Makefile" ]; then
+            echo "ERROR: Makefile not found at $PROJECT_DIR"
+            echo "Repository root:"
+            ls -la
+            exit 1
+          fi
+
+          echo "=== Project files ==="
+          ls -la "$PROJECT_DIR"
+
+          echo "=== Source directories ==="
+          find "$PROJECT_DIR" -maxdepth 2 \
+            -type f \( -name 'Set.mm' -o -name 'Set.hpp' \) \
+            -print
+
+          echo "=== Check Set.mm for misplaced hook code ==="
+          grep -nE \
+            'substrate\.h|mach-o/dyld\.h|WeaponSpreadCalc|MSHookFunction' \
+            "$PROJECT_DIR/menu/Set.mm" || true
+
+          echo "=== Last 20 lines of Set.mm ==="
+          tail -n 20 "$PROJECT_DIR/menu/Set.mm"
 
       - name: Build Theos Tweak
         shell: bash
         run: |
           set -euo pipefail
 
-          cd ImGui-Advanced-ModMenu/ImGui-ModMenu
+          PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
 
-          echo "=== Project files ==="
-          ls -la
+          cd "$PROJECT_DIR"
 
-          echo "=== Build ==="
-          make clean package FINALPACKAGE=1
+          echo "=== Clean ==="
+          make clean
+
+          echo "=== Build using iOS SDK 16.5 ==="
+          make package FINALPACKAGE=1 SDKVERSION=16.5
 
       - name: Locate Build Outputs
         if: success()
@@ -76,9 +102,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
+
           echo "=== Generated packages and libraries ==="
 
-          find .theos packages -type f \
+          find "$PROJECT_DIR/.theos" \
+            "$PROJECT_DIR/packages" \
+            -type f \
             \( -name '*.dylib' -o -name '*.deb' \) \
             -print 2>/dev/null || true
 
@@ -88,20 +118,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p "$RUNNER_TEMP/artifacts"
+          PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
+          ARTIFACT_DIR="$RUNNER_TEMP/artifacts"
 
-          find .theos packages -type f \
+          mkdir -p "$ARTIFACT_DIR"
+
+          find "$PROJECT_DIR/.theos" \
+            "$PROJECT_DIR/packages" \
+            -type f \
             \( -name '*.dylib' -o -name '*.deb' \) \
-            -exec cp -f {} "$RUNNER_TEMP/artifacts/" \; \
+            -exec cp -f {} "$ARTIFACT_DIR/" \; \
             2>/dev/null || true
 
-          if [ -z "$(find "$RUNNER_TEMP/artifacts" \
+          if [ -z "$(find "$ARTIFACT_DIR" \
             -type f -print -quit)" ]; then
-            echo "No build artifacts found."
+            echo "ERROR: No build artifacts found."
             exit 1
           fi
 
-          ls -lh "$RUNNER_TEMP/artifacts"
+          ls -lh "$ARTIFACT_DIR"
 
       - name: Upload Build Artifacts
         if: success()
