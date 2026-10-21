@@ -6,17 +6,18 @@
 #include "../util/ColorH.hpp"
 #include "../util/Obf.hpp"
 #include "../IMGUI/Fonts.hpp"
-#include "../include.h"
 
+#include "../include.h"
 #include <vector>
 
-// Define these variables exactly once in the Menu namespace.
+// Define the menu toggle variables exactly once in Menu.mm.
+// Menu.hpp declares these variables with extern.
 namespace Menu {
     bool NoSpreadActive = false;
     bool GodModeActive = false;
 }
 
-// Set the colors.
+// Sets the colors.
 void Menu::setColors() {
     style->Colors[ImGuiCol_WindowBg] = *winCol;
     style->Colors[ImGuiCol_Border] = ImColor(0, 0, 0, 0);
@@ -45,6 +46,8 @@ void Menu::setColors() {
 // Load fonts.
 void Menu::loadFont() {
     ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
     io.Fonts->Clear();
 
     ImFontConfig font_cfg;
@@ -53,7 +56,7 @@ void Menu::loadFont() {
     io.Fonts->AddFontFromMemoryTTF(
         (void*)poppinsFont,
         sizeof(poppinsFont),
-        isIphone ? 20.0f : 24.0f,
+        isIphone ? 20 : 24,
         &font_cfg
     );
 
@@ -69,7 +72,7 @@ void Menu::loadFont() {
     io.Fonts->AddFontFromMemoryTTF(
         (void*)fontAwesome,
         sizeof(fontAwesome),
-        isIphone ? 20.0f : 24.0f,
+        isIphone ? 20 : 24,
         &icons_config,
         icons_ranges
     );
@@ -80,31 +83,39 @@ void Menu::loadFont() {
     bigFont = io.Fonts->AddFontFromMemoryTTF(
         (void*)poppinsFont,
         sizeof(poppinsFont),
-        isIphone ? 24.0f : 30.0f,
+        isIphone ? 24 : 30,
         &bigFontCfg
+    );
+
+    io.Fonts->AddFontFromMemoryTTF(
+        (void*)fontAwesome,
+        sizeof(fontAwesome),
+        isIphone ? 20 : 24,
+        &icons_config,
+        icons_ranges
     );
 }
 
-// Load the menu theme.
+// Load the theme.
 void Menu::loadTheme() {
     loadFont();
 
     style = &ImGui::GetStyle();
 
-    style->WindowRounding = 6.0f;
-    style->ChildRounding = 6.0f;
-    style->FrameRounding = 2.0f;
-    style->GrabRounding = 2.0f;
-    style->PopupRounding = 2.0f;
+    style->WindowRounding = 6;
+    style->ChildRounding = 6;
+    style->FrameRounding = 2;
+    style->GrabRounding = 2;
+    style->PopupRounding = 2;
 
-    style->ScrollbarSize = 9.0f;
+    style->ScrollbarSize = 9;
     style->FramePadding = ImVec2(6, 3);
     style->ItemSpacing = ImVec2(4, 4);
 
     setColors();
 }
 
-// Render the logo.
+// Top-left logo.
 void Menu::renderLogo() {
     ImGui::BeginGroup();
 
@@ -125,7 +136,7 @@ void Menu::renderLogo() {
     ImGui::EndGroup();
 }
 
-// Render the user panel.
+// Bottom-left user panel.
 void Menu::renderUser() {
     int height = isIphone ? 60 : 80;
 
@@ -147,7 +158,7 @@ void Menu::renderUser() {
     ImGui::EndChild();
 }
 
-// Render the left panel.
+// Draw the left panel.
 void Menu::renderPanel() {
     renderLogo();
     ImGui::Spacing();
@@ -155,7 +166,7 @@ void Menu::renderPanel() {
     renderUser();
 }
 
-// Render the main navigation tabs.
+// Navigation buttons.
 void Menu::renderTabs() {
     ImGui::BeginChild(
         obf("tabs").c_str(),
@@ -166,9 +177,9 @@ void Menu::renderTabs() {
 
     ImGui::Spacing();
 
-    ImVec4 transparent(0, 0, 0, 0);
+    ImVec4 col(0, 0, 0, 0);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10);
 
     std::string tabNames[] = {
         obf(ICON_FA_CROSSHAIRS " Main"),
@@ -180,17 +191,19 @@ void Menu::renderTabs() {
     float buttonWidth = isIphone ? 100.0f : 140.0f;
     float buttonHeight = isIphone ? 30.0f : 40.0f;
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < sizeof(tabNames) / sizeof(tabNames[0]); i++) {
+        std::string it = tabNames[i];
+
         ImGui::PushStyleVar(
             ImGuiStyleVar_ButtonTextAlign,
-            ImVec2(0.0f, 0.5f)
+            ImVec2(0, 0.5f)
         );
 
         ImGui::PushStyleColor(
             ImGuiCol_Button,
             selectedTab == i
                 ? style->Colors[ImGuiCol_ButtonActive]
-                : transparent
+                : col
         );
 
         ImGui::PushStyleColor(
@@ -200,9 +213,7 @@ void Menu::renderTabs() {
                 : *notSelectedTextColor
         );
 
-        if (ImGui::Button(
-                tabNames[i].c_str(),
-                ImVec2(buttonWidth, buttonHeight))) {
+        if (ImGui::Button(it.c_str(), ImVec2(buttonWidth, buttonHeight))) {
             selectedTab = i;
         }
 
@@ -214,7 +225,7 @@ void Menu::renderTabs() {
     ImGui::EndChild();
 }
 
-// Main tab and its subtabs.
+// Main tab.
 void Menu::renderSubTab0() {
     std::vector<std::string> arr = {
         obf("TAB1"),
@@ -258,10 +269,10 @@ void Menu::renderSubTab0() {
                 true
             );
 
+            // Weapon modification toggle states.
             ImGui::Text("Weapon Modifications");
             ImGui::Separator();
 
-            // These checkboxes change their Boolean menu states.
             ImGui::Checkbox(
                 "Perfect Accuracy (No Spread)",
                 &NoSpreadActive
@@ -273,6 +284,7 @@ void Menu::renderSubTab0() {
             );
 
             ImGui::EndChild();
+
             ImGui::Spacing();
 
             ImGui::BeginChild(
@@ -284,8 +296,7 @@ void Menu::renderSubTab0() {
                 true
             );
 
-            // Add other menu options here.
-
+            // Existing content placeholder.
             ImGui::EndChild();
 
             ImGui::NextColumn();
@@ -299,9 +310,9 @@ void Menu::renderSubTab0() {
                 true
             );
 
-            // Add other menu options here.
-
+            // Existing content placeholder.
             ImGui::EndChild();
+
             break;
         }
 
@@ -353,9 +364,9 @@ void Menu::renderSubTab1() {
                 true
             );
 
-            // Add ESP options here.
-
+            // Existing ESP content placeholder.
             ImGui::EndChild();
+
             ImGui::Spacing();
 
             ImGui::BeginChild(
@@ -367,9 +378,9 @@ void Menu::renderSubTab1() {
                 true
             );
 
-            // Add marker options here.
-
+            // Existing markers content placeholder.
             ImGui::EndChild();
+
             ImGui::NextColumn();
 
             ImGui::BeginChild(
@@ -381,9 +392,9 @@ void Menu::renderSubTab1() {
                 true
             );
 
-            // Add more visual options here.
-
+            // Existing ESP content placeholder.
             ImGui::EndChild();
+
             break;
         }
 
@@ -397,7 +408,7 @@ void Menu::renderSubTab1() {
     ImGui::EndChild();
 }
 
-// Miscellaneous tab.
+// Miscellaneous and GUI settings.
 void Menu::renderSubTab2() {
     std::vector<std::string> arr = {
         obf("General"),
@@ -440,6 +451,7 @@ void Menu::renderSubTab2() {
                 true
             );
 
+            // Existing miscellaneous setting.
             ImGui::Checkbox("Streamer Mode", &StreamerMode);
 
             ImGui::EndChild();
@@ -454,9 +466,9 @@ void Menu::renderSubTab2() {
                 true
             );
 
-            // Add more general options here.
-
+            // Existing content placeholder.
             ImGui::EndChild();
+
             ImGui::NextColumn();
 
             ImGui::BeginChild(
@@ -468,9 +480,9 @@ void Menu::renderSubTab2() {
                 true
             );
 
-            // Add more miscellaneous options here.
-
+            // Existing content placeholder.
             ImGui::EndChild();
+
             break;
         }
 
@@ -541,6 +553,7 @@ void Menu::renderSubTab2() {
             );
 
             setColors();
+
             ImGui::EndChild();
             ImGui::Spacing();
 
@@ -553,7 +566,9 @@ void Menu::renderSubTab2() {
                 true
             );
 
+            // Existing content placeholder.
             ImGui::EndChild();
+
             ImGui::NextColumn();
 
             ImGui::BeginChild(
@@ -565,7 +580,9 @@ void Menu::renderSubTab2() {
                 true
             );
 
+            // Existing content placeholder.
             ImGui::EndChild();
+
             break;
         }
     }
@@ -573,7 +590,7 @@ void Menu::renderSubTab2() {
     ImGui::EndChild();
 }
 
-// Render the complete menu.
+// Render the menu.
 void Menu::render() {
     if (ImGui::Begin(
             "ModMenu",
@@ -581,16 +598,20 @@ void Menu::render() {
             ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoTitleBar)) {
 
-        ImGuiWindow* currentWindow = ImGui::GetCurrentWindow();
+        ImGuiWindow* CurrentWindow = ImGui::GetCurrentWindow();
 
-        MenuSize = currentWindow->Size;
-        MenuOrigin = currentWindow->Pos;
+        MenuSize = CurrentWindow->Size;
+        MenuOrigin = CurrentWindow->Pos;
 
         ImGui::Columns(2);
-        ImGui::SetColumnOffset(1, isIphone ? 129.75f : 173.0f);
+        ImGui::SetColumnOffset(
+            1,
+            isIphone ? 129.75f : 173.0f
+        );
 
         renderPanel();
 
+        // Right side.
         ImGui::NextColumn();
 
         switch (selectedTab) {
@@ -607,7 +628,6 @@ void Menu::render() {
                 break;
 
             case 3:
-                // Settings tab.
                 break;
         }
 
