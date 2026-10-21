@@ -12,10 +12,6 @@
 
 // Define the menu toggle variables exactly once in Menu.mm.
 // Menu.hpp declares these variables with extern.
-namespace Menu {
-    bool NoSpreadActive = false;
-    bool GodModeActive = false;
-}
 
 // Sets the colors.
 void Menu::setColors() {
