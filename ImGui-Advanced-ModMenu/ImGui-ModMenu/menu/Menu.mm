@@ -10,14 +10,13 @@
 
 #include <vector>
 
-// Feature toggle definitions.
-// These match the declarations in Menu.hpp.
+// Define these variables exactly once in the Menu namespace.
 namespace Menu {
     bool NoSpreadActive = false;
     bool GodModeActive = false;
 }
 
-// Sets the colors
+// Set the colors.
 void Menu::setColors() {
     style->Colors[ImGuiCol_WindowBg] = *winCol;
     style->Colors[ImGuiCol_Border] = ImColor(0, 0, 0, 0);
@@ -43,11 +42,9 @@ void Menu::setColors() {
     style->Colors[ImGuiCol_TitleBgActive] = *itemActiveCol;
 }
 
-// Sets up fonts
+// Load fonts.
 void Menu::loadFont() {
     ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-
     io.Fonts->Clear();
 
     ImFontConfig font_cfg;
@@ -88,7 +85,7 @@ void Menu::loadFont() {
     );
 }
 
-// Loads the theme
+// Load the menu theme.
 void Menu::loadTheme() {
     loadFont();
 
@@ -107,7 +104,7 @@ void Menu::loadTheme() {
     setColors();
 }
 
-// Top-left logo
+// Render the logo.
 void Menu::renderLogo() {
     ImGui::BeginGroup();
 
@@ -128,7 +125,7 @@ void Menu::renderLogo() {
     ImGui::EndGroup();
 }
 
-// Bottom-left user panel
+// Render the user panel.
 void Menu::renderUser() {
     int height = isIphone ? 60 : 80;
 
@@ -150,7 +147,7 @@ void Menu::renderUser() {
     ImGui::EndChild();
 }
 
-// Draws the left panel
+// Render the left panel.
 void Menu::renderPanel() {
     renderLogo();
     ImGui::Spacing();
@@ -158,7 +155,7 @@ void Menu::renderPanel() {
     renderUser();
 }
 
-// Navigation buttons
+// Render the main navigation tabs.
 void Menu::renderTabs() {
     ImGui::BeginChild(
         obf("tabs").c_str(),
@@ -183,7 +180,7 @@ void Menu::renderTabs() {
     float buttonWidth = isIphone ? 100.0f : 140.0f;
     float buttonHeight = isIphone ? 30.0f : 40.0f;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; ++i) {
         ImGui::PushStyleVar(
             ImGuiStyleVar_ButtonTextAlign,
             ImVec2(0.0f, 0.5f)
@@ -217,7 +214,7 @@ void Menu::renderTabs() {
     ImGui::EndChild();
 }
 
-// Main tab
+// Main tab and its subtabs.
 void Menu::renderSubTab0() {
     std::vector<std::string> arr = {
         obf("TAB1"),
@@ -264,7 +261,7 @@ void Menu::renderSubTab0() {
             ImGui::Text("Weapon Modifications");
             ImGui::Separator();
 
-            // These checkboxes update the menu toggle variables.
+            // These checkboxes change their Boolean menu states.
             ImGui::Checkbox(
                 "Perfect Accuracy (No Spread)",
                 &NoSpreadActive
@@ -276,7 +273,6 @@ void Menu::renderSubTab0() {
             );
 
             ImGui::EndChild();
-
             ImGui::Spacing();
 
             ImGui::BeginChild(
@@ -288,7 +284,7 @@ void Menu::renderSubTab0() {
                 true
             );
 
-            // Add other Main-tab controls here.
+            // Add other menu options here.
 
             ImGui::EndChild();
 
@@ -303,7 +299,7 @@ void Menu::renderSubTab0() {
                 true
             );
 
-            // Add other Main-tab controls here.
+            // Add other menu options here.
 
             ImGui::EndChild();
             break;
@@ -319,16 +315,12 @@ void Menu::renderSubTab0() {
     ImGui::EndChild();
 }
 
-// Visuals tab
+// Visuals tab.
 void Menu::renderSubTab1() {
     ImGuiHelper::drawTabHorizontally(
         obf("subtab-1"),
         ImVec2(ImGuiHelper::getWidth(), 50),
-        {
-            obf("ESP"),
-            obf("World"),
-            obf("Other")
-        },
+        {obf("ESP"), obf("World"), obf("Other")},
         selectedSubTab1
     );
 
@@ -361,7 +353,7 @@ void Menu::renderSubTab1() {
                 true
             );
 
-            // Add ESP controls here.
+            // Add ESP options here.
 
             ImGui::EndChild();
             ImGui::Spacing();
@@ -375,10 +367,9 @@ void Menu::renderSubTab1() {
                 true
             );
 
-            // Add marker controls here.
+            // Add marker options here.
 
             ImGui::EndChild();
-
             ImGui::NextColumn();
 
             ImGui::BeginChild(
@@ -390,7 +381,7 @@ void Menu::renderSubTab1() {
                 true
             );
 
-            // Add additional visual controls here.
+            // Add more visual options here.
 
             ImGui::EndChild();
             break;
@@ -406,7 +397,7 @@ void Menu::renderSubTab1() {
     ImGui::EndChild();
 }
 
-// Misc tab
+// Miscellaneous tab.
 void Menu::renderSubTab2() {
     std::vector<std::string> arr = {
         obf("General"),
@@ -463,10 +454,9 @@ void Menu::renderSubTab2() {
                 true
             );
 
-            // Add general miscellaneous controls here.
+            // Add more general options here.
 
             ImGui::EndChild();
-
             ImGui::NextColumn();
 
             ImGui::BeginChild(
@@ -478,7 +468,7 @@ void Menu::renderSubTab2() {
                 true
             );
 
-            // Add additional miscellaneous controls here.
+            // Add more miscellaneous options here.
 
             ImGui::EndChild();
             break;
@@ -498,61 +488,60 @@ void Menu::renderSubTab2() {
                 obf("Window Color##1").c_str(),
                 (float*)winCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("BackGround Color##1").c_str(),
                 (float*)childCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("Frame Color##1").c_str(),
                 (float*)frameCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("Button Color##1").c_str(),
                 (float*)bgCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("Button Hovered Color##1").c_str(),
                 (float*)btnHoverCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("Button Active Color##1").c_str(),
                 (float*)btnActiveCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("Item Color##1").c_str(),
                 (float*)itemCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             ImGui::ColorEdit4(
                 obf("Item Active Color##1").c_str(),
                 (float*)itemActiveCol,
                 ImGuiColorEditFlags_NoInputs |
-                ImGuiColorEditFlags_AlphaBar
+                    ImGuiColorEditFlags_AlphaBar
             );
 
             setColors();
             ImGui::EndChild();
-
             ImGui::Spacing();
 
             ImGui::BeginChild(
@@ -563,8 +552,6 @@ void Menu::renderSubTab2() {
                 ),
                 true
             );
-
-            // Add GUI controls here.
 
             ImGui::EndChild();
             ImGui::NextColumn();
@@ -578,8 +565,6 @@ void Menu::renderSubTab2() {
                 true
             );
 
-            // Add additional GUI controls here.
-
             ImGui::EndChild();
             break;
         }
@@ -588,13 +573,13 @@ void Menu::renderSubTab2() {
     ImGui::EndChild();
 }
 
-// Main render function
+// Render the complete menu.
 void Menu::render() {
     if (ImGui::Begin(
             "ModMenu",
             nullptr,
             ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoTitleBar)) {
+                ImGuiWindowFlags_NoTitleBar)) {
 
         ImGuiWindow* currentWindow = ImGui::GetCurrentWindow();
 
