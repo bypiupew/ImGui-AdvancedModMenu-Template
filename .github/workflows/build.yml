@@ -12,20 +12,37 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Inspect Project
+      - name: Check Project
         run: |
-          echo "=== Repository root ==="
+          echo "=== Repository files ==="
           ls -la
 
-          echo "=== Project directory ==="
-          find ImGui-Advanced-ModMenu -maxdepth 3 -type f
+          echo "=== Project files ==="
+          find ImGui-Advanced-ModMenu -maxdepth 4 -type f
 
-          echo "=== Find Makefiles ==="
-          find . -name Makefile -not -path './.git/*'
+      - name: List Xcode Schemes
+        run: |
+          xcodebuild -list \
+            -project "ImGui-Advanced-ModMenu.xcodeproj"
 
-          echo "=== Xcode version ==="
-          xcodebuild -version
+      - name: Build Xcode Project
+        run: |
+          xcodebuild \
+            -project "ImGui-Advanced-ModMenu.xcodeproj" \
+            -scheme "ImGui-Advanced-ModMenu" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/Build" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
-          echo "=== Xcode project schemes ==="
-          xcodebuild -list -project \
-            "ImGui-Advanced-ModMenu.xcodeproj"
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-ModMenu-Build
+          path: |
+            ${{ runner.temp }}/Build/Build/Products/Release/**/*.app
+            ${{ runner.temp }}/Build/Build/Products/Release/**/*.dylib
+            ${{ runner.temp }}/Build/Build/Products/Release/**/*.deb
+          if-no-files-found: error
+          retention-days: 7
