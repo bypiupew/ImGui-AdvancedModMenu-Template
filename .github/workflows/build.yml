@@ -25,7 +25,7 @@ jobs:
 
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
 
-      - name: Install iOS SDK
+      - name: Download SDK Repository
         shell: bash
         run: |
           set -euo pipefail
@@ -34,18 +34,28 @@ jobs:
             https://github.com/theos/sdks.git \
             "$RUNNER_TEMP/sdks"
 
-          if [ ! -d "$RUNNER_TEMP/sdks/iPhoneOS17.5.sdk" ]; then
-            echo "Required iPhoneOS17.5.sdk was not found."
-            echo "Available iOS SDKs:"
-            find "$RUNNER_TEMP/sdks" \
-              -maxdepth 1 -type d -name 'iPhoneOS*.sdk'
+      - name: Install iOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDK_SOURCE="$RUNNER_TEMP/sdks"
+          SDK_NAME="iPhoneOS16.5.sdk"
+
+          if [ ! -d "$SDK_SOURCE/$SDK_NAME" ]; then
+            echo "SDK not found: $SDK_NAME"
+            echo "Available SDKs:"
+            find "$SDK_SOURCE" -maxdepth 1 \
+              -type d -name 'iPhoneOS*.sdk'
             exit 1
           fi
 
-          mkdir -p "$HOME/theos/sdks"
+          mkdir -p "$THEOS/sdks"
 
-          cp -R "$RUNNER_TEMP/sdks/iPhoneOS17.5.sdk" \
-            "$HOME/theos/sdks/"
+          cp -R "$SDK_SOURCE/$SDK_NAME" \
+            "$THEOS/sdks/"
+
+          echo "Installed SDK: $SDK_NAME"
 
       - name: Build Theos Tweak
         shell: bash
@@ -57,10 +67,22 @@ jobs:
           echo "=== Project files ==="
           ls -la
 
-          echo "=== Build package ==="
+          echo "=== Build ==="
           make clean package FINALPACKAGE=1
 
-      - name: Collect Build Outputs
+      - name: Locate Build Outputs
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== Generated packages and libraries ==="
+
+          find .theos packages -type f \
+            \( -name '*.dylib' -o -name '*.deb' \) \
+            -print 2>/dev/null || true
+
+      - name: Collect Build Artifacts
         if: success()
         shell: bash
         run: |
@@ -68,20 +90,14 @@ jobs:
 
           mkdir -p "$RUNNER_TEMP/artifacts"
 
-          find . -type f \
-            \( -name '*.dylib' -o -name '*.deb' \) \
-            -not -path './.git/*' \
-            -not -path './.theos/*' \
-            -print
-
-          find packages .theos -type f \
+          find .theos packages -type f \
             \( -name '*.dylib' -o -name '*.deb' \) \
             -exec cp -f {} "$RUNNER_TEMP/artifacts/" \; \
             2>/dev/null || true
 
           if [ -z "$(find "$RUNNER_TEMP/artifacts" \
             -type f -print -quit)" ]; then
-            echo "No .dylib or .deb output was found."
+            echo "No build artifacts found."
             exit 1
           fi
 
