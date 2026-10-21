@@ -10,9 +10,6 @@
 #include "../include.h"
 #include <vector>
 
-// Define the menu toggle variables exactly once in Menu.mm.
-// Menu.hpp declares these variables with extern.
-
 // Sets the colors.
 void Menu::setColors() {
     style->Colors[ImGuiCol_WindowBg] = *winCol;
