@@ -1,25 +1,35 @@
+
 name: Build iOS Mod Menu
+
 on:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-14
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Core Compiler and Patched SDKs
+      - name: Install Dependencies
         run: |
-          git clone --recursive https://github.com ~/theos
-          mkdir -p ~/theos/sdks
-          curl -LO https://github.com
-          tar -xJf iPhoneOS14.5.sdk.tar.xz -C ~/theos/sdks/
-          rm -rf iPhoneOS14.5.sdk.tar.xz
-          echo "THEOS=~/theos" >> $GITHUB_ENV
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
 
-      - name: Compile Tweak Binary
+      - name: Install iOS SDK
         run: |
-          export THEOS=~/theos
+          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          mkdir -p "$HOME/theos/sdks"
+          cp -R "$RUNNER_TEMP/sdks/iPhoneOS14.5.sdk" "$HOME/theos/sdks/"
+
+      - name: Check Project Directory
+        run: |
+          ls -la
+          ls -la ImGui-AdvancedModMenu/ImGui-ModMenu
+
+      - name: Compile Tweak
+        run: |
           cd ImGui-AdvancedModMenu/ImGui-ModMenu
-          $THEOS/bin/make package FINALPACKAGE=1
+          make clean package FINALPACKAGE=1
