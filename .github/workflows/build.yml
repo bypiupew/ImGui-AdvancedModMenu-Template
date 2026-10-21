@@ -12,37 +12,86 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Check Project
+      - name: Install Theos
+        shell: bash
         run: |
-          echo "=== Repository files ==="
-          ls -la
+          set -euo pipefail
+
+          brew install ldid xz
+
+          git clone --recursive \
+            https://github.com/theos/theos.git \
+            "$HOME/theos"
+
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Install iOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git clone --depth 1 \
+            https://github.com/theos/sdks.git \
+            "$RUNNER_TEMP/sdks"
+
+          if [ ! -d "$RUNNER_TEMP/sdks/iPhoneOS17.5.sdk" ]; then
+            echo "Required iPhoneOS17.5.sdk was not found."
+            echo "Available iOS SDKs:"
+            find "$RUNNER_TEMP/sdks" \
+              -maxdepth 1 -type d -name 'iPhoneOS*.sdk'
+            exit 1
+          fi
+
+          mkdir -p "$HOME/theos/sdks"
+
+          cp -R "$RUNNER_TEMP/sdks/iPhoneOS17.5.sdk" \
+            "$HOME/theos/sdks/"
+
+      - name: Build Theos Tweak
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd ImGui-Advanced-ModMenu/ImGui-ModMenu
 
           echo "=== Project files ==="
-          find ImGui-Advanced-ModMenu -maxdepth 4 -type f
+          ls -la
 
-      - name: List Xcode Schemes
-        run: |
-          xcodebuild -list \
-            -project "ImGui-Advanced-ModMenu.xcodeproj"
+          echo "=== Build package ==="
+          make clean package FINALPACKAGE=1
 
-      - name: Build Xcode Project
+      - name: Collect Build Outputs
+        if: success()
+        shell: bash
         run: |
-          xcodebuild \
-            -project "ImGui-Advanced-ModMenu.xcodeproj" \
-            -scheme "ImGui-Advanced-ModMenu" \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath "$RUNNER_TEMP/Build" \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+          set -euo pipefail
+
+          mkdir -p "$RUNNER_TEMP/artifacts"
+
+          find . -type f \
+            \( -name '*.dylib' -o -name '*.deb' \) \
+            -not -path './.git/*' \
+            -not -path './.theos/*' \
+            -print
+
+          find packages .theos -type f \
+            \( -name '*.dylib' -o -name '*.deb' \) \
+            -exec cp -f {} "$RUNNER_TEMP/artifacts/" \; \
+            2>/dev/null || true
+
+          if [ -z "$(find "$RUNNER_TEMP/artifacts" \
+            -type f -print -quit)" ]; then
+            echo "No .dylib or .deb output was found."
+            exit 1
+          fi
+
+          ls -lh "$RUNNER_TEMP/artifacts"
 
       - name: Upload Build Artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: iOS-ModMenu-Build
-          path: |
-            ${{ runner.temp }}/Build/Build/Products/Release/**/*.app
-            ${{ runner.temp }}/Build/Build/Products/Release/**/*.dylib
-            ${{ runner.temp }}/Build/Build/Products/Release/**/*.deb
+          path: ${{ runner.temp }}/artifacts/
           if-no-files-found: error
           retention-days: 7
