@@ -9,13 +9,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Compiler Environment
+      - name: Install Core Compiler and Patched SDKs
         run: |
           git clone --recursive https://github.com ~/theos
           mkdir -p ~/theos/sdks
           curl -LO https://github.com
-          unzip -q iPhoneOS14.5.sdk.zip -d ~/theos/sdks/
-          rm -rf iPhoneOS14.5.sdk.zip
+          tar -xJf iPhoneOS14.5.sdk.tar.xz -C ~/theos/sdks/
+          rm -rf iPhoneOS14.5.sdk.tar.xz
           echo "THEOS=~/theos" >> $GITHUB_ENV
 
       - name: Compile Tweak Binary
