@@ -37,8 +37,20 @@ jobs:
       - name: Install Theos
         run: |
           set -eu
-          git clone --recurse-submodules --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+          git clone --recurse-submodules https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
           echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+
+      - name: Verify Theos vendor tools
+        run: |
+          set -eu
+          echo "Theos root: $THEOS"
+          ls -la "$THEOS/vendor/"
+          if [ ! -f "$THEOS/vendor/dm.pl/dm.pl" ]; then
+            echo "::error::dm.pl not found at $THEOS/vendor/dm.pl/dm.pl"
+            find "$THEOS" -name "dm.pl" 2>/dev/null || echo "dm.pl not found anywhere under THEOS"
+            exit 1
+          fi
+          echo "dm.pl confirmed at $THEOS/vendor/dm.pl/dm.pl"
 
       - name: Locate project
         id: locate
