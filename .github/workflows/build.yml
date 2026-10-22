@@ -1,85 +1,105 @@
-name: Build iOS Mod Menu
+
+name: Build ImGui-ModMenu
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: macos-14
+    name: Build iOS Tweak
+    runs-on: macos-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          clang --version
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install make ldid
+
       - name: Install Theos
-        shell: bash
         run: |
-          set -euo pipefail
-          brew install ldid xz
-          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          git clone --recursive https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
 
-      - name: Download iOS SDK
-        shell: bash
+          echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/theos/bin" >> "$GITHUB_PATH"
+
+      - name: Verify project structure
+        working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
         run: |
-          set -euo pipefail
-          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
-          SDK_NAME="iPhoneOS16.5.sdk"
-          if [ ! -d "$RUNNER_TEMP/sdks/$SDK_NAME" ]; then
-            echo "ERROR: $SDK_NAME not found"
-            find "$RUNNER_TEMP/sdks" -maxdepth 1 -type d -name 'iPhoneOS*.sdk'
+          echo "=== Current directory ==="
+          pwd
+
+          echo "=== Makefile ==="
+          test -f Makefile || {
+            echo "ERROR: Makefile not found"
+            exit 1
+          }
+
+          echo "=== ImGui header search ==="
+          find . -iname "imgui.h" -print
+
+          echo "=== Expected ImGui directory ==="
+          ls -la IMGUI || true
+
+          echo "=== Menu directory ==="
+          ls -la Menu || true
+
+          echo "=== CheatFeatures header ==="
+          if [ -f Menu/CheatFeatures.hpp ]; then
+            sed -n '1,35p' Menu/CheatFeatures.hpp
+          else
+            echo "Menu/CheatFeatures.hpp not found"
+          fi
+
+      - name: Verify ImGui header
+        working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
+        run: |
+          if [ ! -f IMGUI/imgui.h ]; then
+            echo "ERROR: IMGUI/imgui.h does not exist at the expected path."
+            echo "Use the previous step's find output to locate it."
             exit 1
           fi
-          mkdir -p "$THEOS/sdks"
-          cp -R "$RUNNER_TEMP/sdks/$SDK_NAME" "$THEOS/sdks/"
 
-      - name: Show what the runner is building
-        shell: bash
-        run: |
-          cd ImGui-Advanced-ModMenu/ImGui-ModMenu
-          echo "=== Commit being built ==="
-          git log -1 --oneline
-          echo "=== Where the toggle variables appear ==="
-          grep -rnE 'NoSpreadActive|GodModeActive' . \
-            --include='*.mm' --include='*.hpp' --include='*.h' --include='*.cpp' || true
+          echo "Found IMGUI/imgui.h"
 
-      - name: Build Theos Tweak
-        shell: bash
+      - name: Build package
+        working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
         run: |
-          set -euo pipefail
-          cd ImGui-Advanced-ModMenu/ImGui-ModMenu
+          set -o pipefail
+
           make clean
-          make package FINALPACKAGE=1 SDKVERSION=16.5 2>&1 | tee "$RUNNER_TEMP/build.log"
+          make package FINALPACKAGE=1 2>&1 | tee build.log
 
-      - name: Show first errors
-        if: failure()
-        shell: bash
-        run: |
-          echo "=== First errors ==="
-          grep -nE 'error:|Undefined symbols|duplicate symbol' "$RUNNER_TEMP/build.log" | head -n 15 || true
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: theos-build-log
+          path: ImGui-Advanced-ModMenu/ImGui-ModMenu/build.log
+          if-no-files-found: ignore
 
-      - name: Collect Build Artifacts
-        if: success()
-        shell: bash
-        run: |
-          set -euo pipefail
-          PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
-          ARTIFACT_DIR="$RUNNER_TEMP/artifacts"
-          mkdir -p "$ARTIFACT_DIR"
-          find "$PROJECT_DIR/.theos" "$PROJECT_DIR/packages" -type f \
-            \( -name '*.dylib' -o -name '*.deb' \) \
-            -exec cp -f {} "$ARTIFACT_DIR/" \; 2>/dev/null || true
-          if [ -z "$(find "$ARTIFACT_DIR" -type f -print -quit)" ]; then
-            echo "ERROR: No build artifacts found."
-            exit 1
-          fi
-          ls -lh "$ARTIFACT_DIR"
-
-      - name: Upload Build Artifacts
+      - name: Upload Debian package
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: iOS-ModMenu-Build
-          path: ${{ runner.temp }}/artifacts/
-          if-no-files-found: error
-          retention-days: 7
+          name: ImGui-ModMenu-package
+          path: |
+            ImGui-Advanced-ModMenu/ImGui-ModMenu/packages/*.deb
+          if-no-files-found: warn
