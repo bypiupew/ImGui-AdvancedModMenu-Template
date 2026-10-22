@@ -5,23 +5,36 @@ steps:
   - name: Set up Theos
     uses: Randomblock1/theos-action@v1
 
-  - name: Remove conflicting initializer_list file
+  - name: Diagnose and remove conflicting initializer_list
+    shell: bash
     run: |
+      set -euo pipefail
+
+      echo "=== Repository root ==="
+      pwd
+
+      echo "=== Find initializer_list files ==="
+      find . -iname 'initializer_list' -print
+
+      echo "=== Remove project-local conflicting copies ==="
       find . -type f -path '*/IMGUI/initializer_list' -print -delete
 
-      echo "Checking for remaining conflicting files..."
+      echo "=== Verify removal ==="
       if find . -type f -path '*/IMGUI/initializer_list' -print -quit | grep -q .; then
-        echo "ERROR: Conflicting initializer_list file still exists."
+        echo "ERROR: A conflicting file remains."
         exit 1
-      else
-        echo "No conflicting initializer_list files found."
       fi
 
-  - name: Locate Makefile
-    run: |
+      echo "=== Verify expected ImGui header ==="
+      find . -type f -name imgui.h -print
+
+      echo "=== Check project Makefiles ==="
       find . -name Makefile -not -path '*/.theos/*' -print
 
-  - name: Build tweak
+      echo "=== Git status ==="
+      git status --short
+
+  - name: Locate project directory
     shell: bash
     run: |
       set -euo pipefail
@@ -29,21 +42,38 @@ steps:
       PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
 
       if [ ! -f "$PROJECT_DIR/Makefile" ]; then
-        echo "ERROR: Makefile not found at $PROJECT_DIR/Makefile"
-        echo "Check the repository directory structure above."
+        echo "ERROR: Expected Makefile not found: $PROJECT_DIR/Makefile"
+        echo "Available Makefiles:"
+        find . -name Makefile -not -path '*/.theos/*' -print
         exit 1
       fi
 
+      echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+  - name: Build tweak
+    shell: bash
+    run: |
+      set -euo pipefail
+
       cd "$PROJECT_DIR"
+
+      echo "=== Check conflicting file before build ==="
+      if [ -f IMGUI/initializer_list ]; then
+        echo "ERROR: IMGUI/initializer_list still exists."
+        exit 1
+      fi
+
+      echo "=== Clean ==="
       make clean
+
+      echo "=== Build package ==="
       make package FINALPACKAGE=1
 
-  - name: Upload build packages
+  - name: Upload packages
     if: success()
     uses: actions/upload-artifact@v4
     with:
       name: ImGui-ModMenu-packages
       path: |
-        ImGui-Advanced-ModMenu/ImGui-ModMenu/packages/*.deb
-        ImGui-Advanced-ModMenu/ImGui-ModMenu/packages/*.dylib
+        **/packages/*.deb
       if-no-files-found: warn
