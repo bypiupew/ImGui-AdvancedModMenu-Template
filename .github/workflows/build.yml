@@ -1,4 +1,10 @@
-name: Build ImGui-ModMenu - v2
+name: Build ImGui-ModMenu
+
+on: push: branches: - main pull_request: branches: - main workflow_dispatch:
+
+permissions: contents: read
+
+jobs: build: name: Build iOS Tweak runs-on: macos-15
 
 steps:
   - name: Checkout repository
@@ -7,7 +13,7 @@ steps:
   - name: Set up Theos
     uses: Randomblock1/theos-action@v1
 
-  - name: Find project and diagnose headers
+  - name: Diagnose project structure
     shell: bash
     run: |
       set -euo pipefail
@@ -15,55 +21,70 @@ steps:
       echo "=== Repository root ==="
       pwd
 
-      echo "=== Makefiles ==="
-      find . -name Makefile -not -path '*/.theos/*' -print
+      echo "=== Available Makefiles ==="
+      find . -name Makefile \
+        -not -path '*/.theos/*' \
+        -not -path '*/.git/*' -print
 
       echo "=== ImGui headers ==="
       find . -type f -name imgui.h -print
 
-      echo "=== Conflicting initializer_list files ==="
-      find . -type f -path '*/IMGUI/initializer_list' -print
+      echo "=== initializer_list files ==="
+      find . -type f -name initializer_list -print
 
       PROJECT_MAKEFILE="$(find . -type f -name Makefile \
         -not -path '*/.theos/*' \
-        -not -path '*/.git/*' \
-        -print -quit)"
+        -not -path '*/.git/*' -print -quit)"
 
       if [ -z "$PROJECT_MAKEFILE" ]; then
-        echo "ERROR: No project Makefile found."
+        echo "ERROR: No Makefile found."
         exit 1
       fi
 
       PROJECT_DIR="$(dirname "$PROJECT_MAKEFILE")"
       echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-      echo "Using project directory: $PROJECT_DIR"
+      echo "Selected project: $PROJECT_DIR"
 
-  - name: Remove conflicting ImGui header
+  - name: Verify ImGui header conflict
     shell: bash
     run: |
       set -euo pipefail
 
-      find "$PROJECT_DIR" -type f \
-        -path '*/IMGUI/initializer_list' -print -delete
+      echo "=== Inspect project-local initializer_list ==="
 
-      if find "$PROJECT_DIR" -type f \
-        -path '*/IMGUI/initializer_list' -print -quit | grep -q .; then
-        echo "ERROR: Conflicting initializer_list file remains."
+      find "$PROJECT_DIR" -type f \
+        -path '*/IMGUI/initializer_list' -print
+
+      if [ -f "$PROJECT_DIR/IMGUI/initializer_list" ]; then
+        echo "Found conflicting project-local header."
+        sed -n '1,60p' "$PROJECT_DIR/IMGUI/initializer_list"
+        echo "Removing the conflicting file."
+        rm "$PROJECT_DIR/IMGUI/initializer_list"
+      fi
+
+      echo "=== Verify expected header ==="
+      if [ ! -f "$PROJECT_DIR/IMGUI/imgui.h" ]; then
+        echo "ERROR: IMGUI/imgui.h not found in selected project."
         exit 1
       fi
 
-  - name: Build package
+  - name: Build Debian package
     shell: bash
     run: |
       set -euo pipefail
+
       cd "$PROJECT_DIR"
+
+      echo "=== Clean previous build ==="
       make clean
+
+      echo "=== Compile and package ==="
       make package FINALPACKAGE=1
 
-  - name: Upload Debian package
+  - name: Upload Debian packages
     if: success()
     uses: actions/upload-artifact@v4
     with:
-      name: ImGui-ModMenu-package
+      name: ImGui-ModMenu-deb
       path: "**/*.deb"
-      if-no-files-found: warn
+      if-no-files-found: error
