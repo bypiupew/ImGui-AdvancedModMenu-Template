@@ -39,18 +39,15 @@ jobs:
           set -eu
           git clone --recurse-submodules https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
           echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+          echo "DEB_MAKE=$RUNNER_TEMP/theos/vendor/dm.pl/dm.pl" >> "$GITHUB_ENV"
 
-      - name: Verify Theos vendor tools
+      - name: Fix dm.pl
         run: |
           set -eu
-          echo "Theos root: $THEOS"
-          ls -la "$THEOS/vendor/"
-          if [ ! -f "$THEOS/vendor/dm.pl/dm.pl" ]; then
-            echo "::error::dm.pl not found at $THEOS/vendor/dm.pl/dm.pl"
-            find "$THEOS" -name "dm.pl" 2>/dev/null || echo "dm.pl not found anywhere under THEOS"
-            exit 1
-          fi
-          echo "dm.pl confirmed at $THEOS/vendor/dm.pl/dm.pl"
+          DM="$RUNNER_TEMP/theos/vendor/dm.pl/dm.pl"
+          chmod +x "$DM"
+          sudo ln -sf "$DM" /usr/local/bin/dm.pl
+          which perl && perl "$DM" --version 2>/dev/null || true
 
       - name: Locate project
         id: locate
@@ -91,41 +88,13 @@ jobs:
             rm IMGUI/initializer_list
           fi
 
-      - name: Debug dm.pl execution
-        working-directory: ${{ steps.locate.outputs.project_dir }}
-        run: |
-          set -eu
-          echo "=== THEOS env ==="
-          echo "THEOS=$THEOS"
-
-          echo "=== dm.pl location ==="
-          find "$THEOS" -name "dm.pl" 2>/dev/null
-
-          echo "=== dm.pl permissions ==="
-          ls -la "$THEOS/vendor/dm.pl/dm.pl" 2>/dev/null || echo "not at expected path"
-
-          echo "=== Perl location ==="
-          which perl || echo "perl not in PATH"
-          perl --version 2>/dev/null | head -1
-
-          echo "=== dm.pl shebang ==="
-          head -1 "$THEOS/vendor/dm.pl/dm.pl" 2>/dev/null || echo "cant read file"
-
-          echo "=== dm.pl dry run ==="
-          perl "$THEOS/vendor/dm.pl/dm.pl" 2>/dev/null || echo "dm.pl exit: $?"
-
-          echo "=== deb.mk check line ==="
-          grep -n "dm.pl" "$THEOS/makefiles/package/deb.mk" | head -10
-
-          echo "=== make variables ==="
-          make -n package FINALPACKAGE=1 2>&1 | head -30
-
       - name: Build Debian package
         working-directory: ${{ steps.locate.outputs.project_dir }}
         run: |
           set -euo pipefail
 
           export PATH="$(brew --prefix make)/libexec/gnubin:$PATH"
+          export PATH="$RUNNER_TEMP/theos/vendor/dm.pl:$PATH"
 
           make clean
           make package FINALPACKAGE=1 2>&1 | tee "$RUNNER_TEMP/build.log"
