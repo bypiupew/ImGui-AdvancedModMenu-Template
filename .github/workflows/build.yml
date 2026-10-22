@@ -1,136 +1,49 @@
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
 
-name: Build ImGui-ModMenu
+  - name: Set up Theos
+    uses: Randomblock1/theos-action@v1
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+  - name: Remove conflicting initializer_list file
+    run: |
+      find . -type f -path '*/IMGUI/initializer_list' -print -delete
 
-permissions:
-  contents: read
+      echo "Checking for remaining conflicting files..."
+      if find . -type f -path '*/IMGUI/initializer_list' -print -quit | grep -q .; then
+        echo "ERROR: Conflicting initializer_list file still exists."
+        exit 1
+      else
+        echo "No conflicting initializer_list files found."
+      fi
 
-jobs:
-  build:
-    name: Build iOS Tweak
-    runs-on: macos-latest
+  - name: Locate Makefile
+    run: |
+      find . -name Makefile -not -path '*/.theos/*' -print
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  - name: Build tweak
+    shell: bash
+    run: |
+      set -euo pipefail
 
-      - name: Select Xcode
-        run: |
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          xcodebuild -version
-          clang --version
+      PROJECT_DIR="ImGui-Advanced-ModMenu/ImGui-ModMenu"
 
-      - name: Install dependencies
-        run: |
-          brew install make ldid
+      if [ ! -f "$PROJECT_DIR/Makefile" ]; then
+        echo "ERROR: Makefile not found at $PROJECT_DIR/Makefile"
+        echo "Check the repository directory structure above."
+        exit 1
+      fi
 
-      - name: Install Theos
-        run: |
-          git clone --recursive https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
-          echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/theos/bin" >> "$GITHUB_PATH"
+      cd "$PROJECT_DIR"
+      make clean
+      make package FINALPACKAGE=1
 
-      - name: Locate project
-        id: project
-        run: |
-          echo "Repository root:"
-          pwd
-
-          echo "Searching for Makefile..."
-          find . -type f -name Makefile -not -path '*/.theos/*' -print
-
-          PROJECT_DIR="$(find . -type f -name Makefile \
-            -not -path '*/.theos/*' \
-            -exec grep -l 'TWEAK_NAME.*ImGui-ModMenu' {} \; \
-            | head -n 1)"
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Could not locate the ImGui-ModMenu Makefile."
-            exit 1
-          fi
-
-          PROJECT_DIR="$(dirname "$PROJECT_DIR")"
-          echo "Project directory: $PROJECT_DIR"
-          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-
-      - name: Diagnose ImGui headers
-        working-directory: ${{ github.workspace }}
-        env:
-          PROJECT_DIR: ${{ steps.project.outputs.project_dir }}
-        run: |
-          set -eu
-
-          echo "=== Project directory ==="
-          ls -la "$PROJECT_DIR"
-
-          echo "=== All imgui.h files ==="
-          find . -type f -iname 'imgui.h' -print
-
-          echo "=== Expected header ==="
-          if [ -f "$PROJECT_DIR/IMGUI/imgui.h" ]; then
-            echo "Found: $PROJECT_DIR/IMGUI/imgui.h"
-          else
-            echo "WARNING: Header not found at $PROJECT_DIR/IMGUI/imgui.h"
-          fi
-
-          echo "=== CheatFeatures.hpp ==="
-          if [ -f "$PROJECT_DIR/Menu/CheatFeatures.hpp" ]; then
-            sed -n '1,50p' "$PROJECT_DIR/Menu/CheatFeatures.hpp"
-          else
-            echo "CheatFeatures.hpp not found at expected location."
-          fi
-
-          echo "=== Makefile include flags ==="
-          grep -nE 'CFLAGS|CCFLAGS|IMGUI|TWEAK_NAME' \
-            "$PROJECT_DIR/Makefile" || true
-
-      - name: Verify ImGui headers
-        env:
-          PROJECT_DIR: ${{ steps.project.outputs.project_dir }}
-        run: |
-          set -eu
-
-          if [ ! -f "$PROJECT_DIR/IMGUI/imgui.h" ]; then
-            echo "ERROR: IMGUI/imgui.h is missing."
-            echo "Use the header search output in the previous step."
-            exit 1
-          fi
-
-          if [ ! -f "$PROJECT_DIR/IMGUI/imgui.cpp" ]; then
-            echo "ERROR: IMGUI/imgui.cpp is missing."
-            exit 1
-          fi
-
-          echo "ImGui headers and source files verified."
-
-      - name: Build package
-        working-directory: ${{ steps.project.outputs.project_dir }}
-        run: |
-          set -o pipefail
-
-          make clean
-          make package FINALPACKAGE=1 2>&1 | tee build.log
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: theos-build-log
-          path: ${{ steps.project.outputs.project_dir }}/build.log
-          if-no-files-found: ignore
-
-      - name: Upload Debian package
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ImGui-ModMenu-package
-          path: ${{ steps.project.outputs.project_dir }}/packages/*.deb
-          if-no-files-found: warn
+  - name: Upload build packages
+    if: success()
+    uses: actions/upload-artifact@v4
+    with:
+      name: ImGui-ModMenu-packages
+      path: |
+        ImGui-Advanced-ModMenu/ImGui-ModMenu/packages/*.deb
+        ImGui-Advanced-ModMenu/ImGui-ModMenu/packages/*.dylib
+      if-no-files-found: warn
