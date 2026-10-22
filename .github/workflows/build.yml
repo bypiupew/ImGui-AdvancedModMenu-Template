@@ -68,6 +68,23 @@ jobs:
             echo "Menu/CheatFeatures.hpp not found"
           fi
 
+       - name: Diagnose ImGui include
+        run: |
+          echo "=== Repository root ==="
+          pwd
+
+          echo "=== All imgui.h files ==="
+          find . -type f -iname 'imgui.h' -print
+
+          echo "=== CheatFeatures include ==="
+          grep -n '#include.*imgui' \
+            ImGui-Advanced-ModMenu/ImGui-ModMenu/Menu/CheatFeatures.hpp
+
+          echo "=== Makefile include flags ==="
+          grep -nE 'CFLAGS|CCFLAGS|IMGUI' \
+            ImGui-Advanced-ModMenu/ImGui-ModMenu/Makefile
+
+
       - name: Verify ImGui header
         working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
         run: |
