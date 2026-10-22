@@ -4,23 +4,95 @@ on: push: pull_request: workflow_dispatch:
 
 permissions: contents: read
 
-jobs: verify-workflow: name: Verify GitHub Actions runs-on: macos-15
+concurrency: group: imgui-mod-menu-${{ github.ref }} cancel-in-progress: false
+
+jobs: build: name: Build iOS Tweak runs-on: macos-15
 
 steps:
   - name: Checkout repository
     uses: actions/checkout@v4
 
-  - name: Confirm workflow is running
+  - name: Show repository information
     run: |
-      echo "GitHub Actions is working."
+      set -eu
       echo "Repository: $GITHUB_REPOSITORY"
       echo "Branch: $GITHUB_REF_NAME"
       echo "Commit: $GITHUB_SHA"
+      echo "Workspace: $GITHUB_WORKSPACE"
 
-  - name: Locate Theos project
+  - name: Install dependencies
     run: |
       set -eu
-      echo "Searching for Makefiles..."
-      find . -type f -name Makefile -not -path '*/.theos/*' -print
-      echo "Searching for ImGui headers..."
-      find . -type f -name imgui.h -print
+      brew install make ldid
+
+  - name: Install Theos
+    run: |
+      set -eu
+      git clone --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+
+  - name: Locate project
+    id: locate
+    run: |
+      set -eu
+
+      MAKEFILE="$(find "$GITHUB_WORKSPACE" \
+        -type f \
+        -name Makefile \
+        -not -path '*/.theos/*' \
+        -print -quit)"
+
+      if [ -z "$MAKEFILE" ]; then
+        echo "::error::No Makefile found."
+        exit 1
+      fi
+
+      PROJECT_DIR="$(dirname "$MAKEFILE")"
+      echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
+      echo "Project directory: $PROJECT_DIR"
+      echo "Makefile: $MAKEFILE"
+
+  - name: Check ImGui files
+    working-directory: ${{ steps.locate.outputs.project_dir }}
+    run: |
+      set -eu
+
+      if [ ! -f IMGUI/imgui.h ]; then
+        echo "::error::IMGUI/imgui.h was not found."
+        exit 1
+      fi
+
+      echo "ImGui header found."
+
+      if [ -f IMGUI/initializer_list ]; then
+        echo "Removing conflicting bundled IMGUI/initializer_list file."
+        rm IMGUI/initializer_list
+      fi
+
+  - name: Build Debian package
+    working-directory: ${{ steps.locate.outputs.project_dir }}
+    run: |
+      set -euo pipefail
+
+      export PATH="$(brew --prefix make)/libexec/gnubin:$PATH"
+
+      make clean
+      make package FINALPACKAGE=1 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+  - name: Upload build log
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: build-log
+      path: ${{ runner.temp }}/build.log
+      if-no-files-found: ignore
+
+  - name: Upload Debian package
+    if: success()
+    uses: actions/upload-artifact@v4
+    with:
+      name: ImGui-ModMenu-deb
+      path: |
+        **/*.deb
+      if-no-files-found: error
