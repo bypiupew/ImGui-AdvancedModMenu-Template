@@ -37,7 +37,7 @@ jobs:
       - name: Install Theos
         run: |
           set -eu
-          git clone --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+          git clone --recurse-submodules --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
           echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
 
       - name: Locate project
