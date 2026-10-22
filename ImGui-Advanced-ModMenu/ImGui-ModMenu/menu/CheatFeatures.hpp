@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../IMGUI/imgui.h"
+#include "imgui.h"
 #include <vector>
 
 namespace DemoFeatures {
