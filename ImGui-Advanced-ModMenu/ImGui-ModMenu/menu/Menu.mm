@@ -1,7 +1,63 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "imgui.h"
+#include "CheatFeatures.hpp"
 
+void DrawDemoFeatureMenu() {
+    using namespace DemoFeatures;
+
+    if (!ImGui::BeginTabItem("Features"))
+        return;
+
+    ImGui::Checkbox("ESP Overlay", &settings.espEnabled);
+
+    if (settings.espEnabled) {
+        ImGui::Checkbox("Health Bars", &settings.showHealth);
+    }
+
+    ImGui::Separator();
+
+    ImGui::Checkbox(
+        "Aim Assist Visualization",
+        &settings.aimAssistEnabled
+    );
+
+    ImGui::Checkbox(
+        "Show Aim Radius",
+        &settings.showAimRadius
+    );
+
+    ImGui::SliderFloat(
+        "Aim Radius",
+        &settings.aimRadius,
+        20.0f,
+        300.0f,
+        "%.0f px"
+    );
+
+    ImGui::SliderFloat(
+        "Aim Smoothing",
+        &settings.aimSmoothing,
+        1.0f,
+        20.0f,
+        "%.1f"
+    );
+
+    ImGui::Separator();
+
+    ImGui::Checkbox("Demo Speed Multiplier", &settings.speedEnabled);
+
+    ImGui::SliderFloat(
+        "Speed",
+        &settings.speedMultiplier,
+        1.0f,
+        3.0f,
+        "%.1fx"
+    );
+
+    ImGui::EndTabItem();
+}
 // Mod Menu State Flags
 struct CheatState {
     bool aimbot;
