@@ -1,90 +1,118 @@
-name: Build ImGui-ModMenu
+name: Build ImGui Mod Menu
 
-on: push: branches: - main pull_request: branches: - main workflow_dispatch:
+on: workflow_dispatch: push: branches: - main pull_request: branches: - main
 
 permissions: contents: read
 
 jobs: build: name: Build iOS Tweak runs-on: macos-15
 
+defaults:
+  run:
+    shell: bash
+
 steps:
   - name: Checkout repository
     uses: actions/checkout@v4
 
-  - name: Set up Theos
-    uses: Randomblock1/theos-action@v1
-
-  - name: Diagnose project structure
-    shell: bash
+  - name: Find project Makefile
     run: |
       set -euo pipefail
-
-      echo "=== Repository root ==="
+      echo "Repository root:"
       pwd
+      echo "Searching for Makefile:"
+      find . -type f -name Makefile -not -path '*/.theos/*' -print
 
-      echo "=== Available Makefiles ==="
-      find . -name Makefile \
-        -not -path '*/.theos/*' \
-        -not -path '*/.git/*' -print
+  - name: Install build dependencies
+    run: |
+      set -euo pipefail
+      brew update
+      brew install make ldid
 
-      echo "=== ImGui headers ==="
-      find . -type f -name imgui.h -print
+  - name: Install Theos
+    run: |
+      set -euo pipefail
+      git clone --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+      echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
 
-      echo "=== initializer_list files ==="
-      find . -type f -name initializer_list -print
-
-      PROJECT_MAKEFILE="$(find . -type f -name Makefile \
-        -not -path '*/.theos/*' \
-        -not -path '*/.git/*' -print -quit)"
-
-      if [ -z "$PROJECT_MAKEFILE" ]; then
-        echo "ERROR: No Makefile found."
-        exit 1
-      fi
-
-      PROJECT_DIR="$(dirname "$PROJECT_MAKEFILE")"
-      echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-      echo "Selected project: $PROJECT_DIR"
-
-  - name: Verify ImGui header conflict
-    shell: bash
+  - name: Locate tweak project
+    id: project
     run: |
       set -euo pipefail
 
-      echo "=== Inspect project-local initializer_list ==="
+      MAKEFILE="$(find "$GITHUB_WORKSPACE" \
+        -type f \
+        -name Makefile \
+        -not -path '*/.theos/*' \
+        -print -quit)"
 
-      find "$PROJECT_DIR" -type f \
-        -path '*/IMGUI/initializer_list' -print
-
-      if [ -f "$PROJECT_DIR/IMGUI/initializer_list" ]; then
-        echo "Found conflicting project-local header."
-        sed -n '1,60p' "$PROJECT_DIR/IMGUI/initializer_list"
-        echo "Removing the conflicting file."
-        rm "$PROJECT_DIR/IMGUI/initializer_list"
-      fi
-
-      echo "=== Verify expected header ==="
-      if [ ! -f "$PROJECT_DIR/IMGUI/imgui.h" ]; then
-        echo "ERROR: IMGUI/imgui.h not found in selected project."
+      if [[ -z "$MAKEFILE" ]]; then
+        echo "::error::No Makefile found in the repository."
         exit 1
       fi
 
-  - name: Build Debian package
-    shell: bash
+      PROJECT_DIR="$(dirname "$MAKEFILE")"
+      echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+      echo "Using project directory: $PROJECT_DIR"
+
+  - name: Remove conflicting bundled header
+    working-directory: ${{ steps.project.outputs.project_dir }}
     run: |
       set -euo pipefail
 
-      cd "$PROJECT_DIR"
+      if [[ -f IMGUI/initializer_list ]]; then
+        echo "Removing bundled file IMGUI/initializer_list"
+        rm IMGUI/initializer_list
+      fi
 
-      echo "=== Clean previous build ==="
+      if [[ -f IMGUI/initializer_list ]]; then
+        echo "::error::Conflicting initializer_list file still exists."
+        exit 1
+      fi
+
+      echo "Checking for other copies:"
+      find IMGUI -type f -name initializer_list -print || true
+
+  - name: Verify ImGui headers
+    working-directory: ${{ steps.project.outputs.project_dir }}
+    run: |
+      set -euo pipefail
+
+      test -f IMGUI/imgui.h || {
+        echo "::error::IMGUI/imgui.h is missing."
+        exit 1
+      }
+
+      test -f Makefile || {
+        echo "::error::Makefile is missing."
+        exit 1
+      }
+
+      echo "ImGui header and Makefile found."
+      grep -n 'TWEAK_NAME\|MenuFiles\|CCFLAGS\|CFLAGS' Makefile || true
+
+  - name: Build package
+    working-directory: ${{ steps.project.outputs.project_dir }}
+    run: |
+      set -euo pipefail
+
+      export PATH="$(brew --prefix make)/libexec/gnubin:$PATH"
+
       make clean
+      make package FINALPACKAGE=1 2>&1 | tee "$RUNNER_TEMP/theos-build.log"
 
-      echo "=== Compile and package ==="
-      make package FINALPACKAGE=1
+  - name: Upload build logs
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: theos-build-logs
+      path: ${{ runner.temp }}/theos-build.log
+      if-no-files-found: ignore
 
-  - name: Upload Debian packages
+  - name: Upload Debian package
     if: success()
     uses: actions/upload-artifact@v4
     with:
-      name: ImGui-ModMenu-deb
-      path: "**/*.deb"
+      name: ImGui-ModMenu-package
+      path: |
+        **/*.deb
       if-no-files-found: error
