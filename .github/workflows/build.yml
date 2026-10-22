@@ -30,74 +30,89 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew update
           brew install make ldid
 
       - name: Install Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
-
           echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
           echo "$RUNNER_TEMP/theos/bin" >> "$GITHUB_PATH"
 
-      - name: Verify project structure
-        working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
+      - name: Locate project
+        id: project
         run: |
-          echo "=== Current directory ==="
+          echo "Repository root:"
           pwd
 
-          echo "=== Makefile ==="
-          test -f Makefile || {
-            echo "ERROR: Makefile not found"
+          echo "Searching for Makefile..."
+          find . -type f -name Makefile -not -path '*/.theos/*' -print
+
+          PROJECT_DIR="$(find . -type f -name Makefile \
+            -not -path '*/.theos/*' \
+            -exec grep -l 'TWEAK_NAME.*ImGui-ModMenu' {} \; \
+            | head -n 1)"
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Could not locate the ImGui-ModMenu Makefile."
             exit 1
-          }
-
-          echo "=== ImGui header search ==="
-          find . -iname "imgui.h" -print
-
-          echo "=== Expected ImGui directory ==="
-          ls -la IMGUI || true
-
-          echo "=== Menu directory ==="
-          ls -la Menu || true
-
-          echo "=== CheatFeatures header ==="
-          if [ -f Menu/CheatFeatures.hpp ]; then
-            sed -n '1,35p' Menu/CheatFeatures.hpp
-          else
-            echo "Menu/CheatFeatures.hpp not found"
           fi
 
-       - name: Diagnose ImGui include
+          PROJECT_DIR="$(dirname "$PROJECT_DIR")"
+          echo "Project directory: $PROJECT_DIR"
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Diagnose ImGui headers
+        working-directory: ${{ github.workspace }}
+        env:
+          PROJECT_DIR: ${{ steps.project.outputs.project_dir }}
         run: |
-          echo "=== Repository root ==="
-          pwd
+          set -eu
+
+          echo "=== Project directory ==="
+          ls -la "$PROJECT_DIR"
 
           echo "=== All imgui.h files ==="
           find . -type f -iname 'imgui.h' -print
 
-          echo "=== CheatFeatures include ==="
-          grep -n '#include.*imgui' \
-            ImGui-Advanced-ModMenu/ImGui-ModMenu/Menu/CheatFeatures.hpp
+          echo "=== Expected header ==="
+          if [ -f "$PROJECT_DIR/IMGUI/imgui.h" ]; then
+            echo "Found: $PROJECT_DIR/IMGUI/imgui.h"
+          else
+            echo "WARNING: Header not found at $PROJECT_DIR/IMGUI/imgui.h"
+          fi
+
+          echo "=== CheatFeatures.hpp ==="
+          if [ -f "$PROJECT_DIR/Menu/CheatFeatures.hpp" ]; then
+            sed -n '1,50p' "$PROJECT_DIR/Menu/CheatFeatures.hpp"
+          else
+            echo "CheatFeatures.hpp not found at expected location."
+          fi
 
           echo "=== Makefile include flags ==="
-          grep -nE 'CFLAGS|CCFLAGS|IMGUI' \
-            ImGui-Advanced-ModMenu/ImGui-ModMenu/Makefile
+          grep -nE 'CFLAGS|CCFLAGS|IMGUI|TWEAK_NAME' \
+            "$PROJECT_DIR/Makefile" || true
 
-
-      - name: Verify ImGui header
-        working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
+      - name: Verify ImGui headers
+        env:
+          PROJECT_DIR: ${{ steps.project.outputs.project_dir }}
         run: |
-          if [ ! -f IMGUI/imgui.h ]; then
-            echo "ERROR: IMGUI/imgui.h does not exist at the expected path."
-            echo "Use the previous step's find output to locate it."
+          set -eu
+
+          if [ ! -f "$PROJECT_DIR/IMGUI/imgui.h" ]; then
+            echo "ERROR: IMGUI/imgui.h is missing."
+            echo "Use the header search output in the previous step."
             exit 1
           fi
 
-          echo "Found IMGUI/imgui.h"
+          if [ ! -f "$PROJECT_DIR/IMGUI/imgui.cpp" ]; then
+            echo "ERROR: IMGUI/imgui.cpp is missing."
+            exit 1
+          fi
+
+          echo "ImGui headers and source files verified."
 
       - name: Build package
-        working-directory: ImGui-Advanced-ModMenu/ImGui-ModMenu
+        working-directory: ${{ steps.project.outputs.project_dir }}
         run: |
           set -o pipefail
 
@@ -109,7 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: theos-build-log
-          path: ImGui-Advanced-ModMenu/ImGui-ModMenu/build.log
+          path: ${{ steps.project.outputs.project_dir }}/build.log
           if-no-files-found: ignore
 
       - name: Upload Debian package
@@ -117,6 +132,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ImGui-ModMenu-package
-          path: |
-            ImGui-Advanced-ModMenu/ImGui-ModMenu/packages/*.deb
+          path: ${{ steps.project.outputs.project_dir }}/packages/*.deb
           if-no-files-found: warn
