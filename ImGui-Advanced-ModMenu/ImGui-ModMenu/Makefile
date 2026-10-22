@@ -21,6 +21,9 @@ $(TWEAK_NAME)_FILES = $(MenuFiles) $(utilsFiles) $(ImGuiFiles) $(FloatingFiles)
 
 $(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation Security QuartzCore CoreGraphics CoreText AVFoundation Accelerate GLKit SystemConfiguration GameController ImageIO CoreFoundation CFNetwork ReplayKit
 
+$(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/IMGUI
+
+$(TWEAK_NAME)_CCFLAGS += -I$(THEOS_PROJECT_DIR)/IMGUI
 
 $(TWEAK_NAME)_CCFLAGS = -std=c++20 -fno-rtti -DNDEBUG -Wno-unused-variable -O0 -Wno-error -fobjc-arc -Wno-unused-property-ivar -Wno-format
 
